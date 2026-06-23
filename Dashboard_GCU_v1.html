@@ -441,7 +441,7 @@ function pctFmt(v) {
 async function loadAvb() {
   try {
     // Ambil semua budget_forecast
-    const bf = await supabaseFetch('budget_forecast', 'order=month.asc');
+    const bf = await supabaseFetch('budget_forecast', 'select=month,budget,forecast,budget_per_day,forecast_per_day,start_day&order=month.asc');
     // Ambil semua actual dari daily_summary (SUM per bulan)
     const ds = await supabaseFetch('daily_summary', 'select=report_date,total_revenue&order=report_date.asc&limit=500');
 
@@ -514,8 +514,10 @@ async function loadAvb() {
 
       // Tabel row 1 & 2
       document.getElementById('avbTblMonth').textContent = `${MONTHS_ID[mo]} ${yr}`;
-      const budgetSoFar   = bpd * curDay;
-      const forecastSoFar = fpd * curDay;
+      const startDay      = parseInt(bfCur.start_day) || 1;
+      const activeDays    = Math.max(0, curDay - startDay + 1);
+      const budgetSoFar   = bpd * activeDays;
+      const forecastSoFar = fpd * activeDays;
 
       // Row 1: Below/Above = (budgetSoFar - actual) / budgetSoFar × 100
       const pct1 = budgetSoFar > 0 ? ((budgetSoFar - actualMtd) / budgetSoFar * 100) : 0;
@@ -1522,7 +1524,9 @@ async function loadAvbForDate(iso) {
   document.getElementById('avbProgFill').style.background = achieve>=expPct?'#10B981':achieve>=expPct*0.85?'#F59E0B':'#EF4444';
 
   document.getElementById('avbTblMonth').textContent = `${MONTHS_ID2[mo]} ${yr}`;
-  const bSoFar=bpd*day, fSoFar=fpd*day;
+  const startDay2=parseInt(bfCur.start_day)||1;
+  const activeDays2=Math.max(0,day-startDay2+1);
+  const bSoFar=bpd*activeDays2, fSoFar=fpd*activeDays2;
   const pct1=bSoFar>0?((bSoFar-actualSoFar)/bSoFar*100):0;
   const proj=actualSoFar+(fpd*(dIM-day));
   const pct2=budget>0?((budget-proj)/budget*100):0;
@@ -1578,10 +1582,12 @@ async function loadAvbForMonth(ym) {
   const pct2=budget>0?((budget-proj)/budget*100):0;
   const isPast=ym<(new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'));
 
+  const startDay3=parseInt(bfRow.start_day)||1;
+  const activeDays3=Math.max(0,lastDay-startDay3+1);
   document.getElementById('avbTblBody').innerHTML=`
     <tr class="alt"><td>As of ${lastDay} ${MONTHS_ID2[mo]} ${yr}</td>
-      <td class="r">${rpFmt(parseFloat(bfRow.budget_per_day)*lastDay)}</td>
-      <td class="r">${rpFmt(fpd*lastDay)}</td>
+      <td class="r">${rpFmt(parseFloat(bfRow.budget_per_day)*activeDays3)}</td>
+      <td class="r">${rpFmt(fpd*activeDays3)}</td>
       <td class="r" style="font-weight:600">${rpFmt(actualMonth)}</td>
       <td class="r">${pctFmt(pct1)}</td></tr>
     <tr class="tot"><td>${dIM} ${MONTHS_ID2[mo]} ${yr}</td>
